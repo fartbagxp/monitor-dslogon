@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer');
+const fs = require('fs');
 
 /**
  * Ensure that the environment and credentials are set.
@@ -60,6 +61,7 @@ async function screenshot(page, filename) {
  */
 (async () => {
   const [username, password, debug] = validateEnv();
+  const dateTime = new Date().toISOString();
 
   URL = 'https://www.dmdc.osd.mil/identitymanagement/profile/home.do';
 
@@ -75,7 +77,7 @@ async function screenshot(page, filename) {
 
   // debug statement for getting to the website
   if (debug) {
-    await screenshot(page, 'initial-website.png');
+    await screenshot(page, `${dateTime}-initial-website.png`);
   }
 
   await page.waitForSelector(
@@ -108,7 +110,7 @@ async function screenshot(page, filename) {
 
   // debug statement for writing credentials
   if (debug) {
-    await screenshot(page, 'entering-credentials.png');
+    await screenshot(page, `${dateTime}-entering-credentials.png`);
   }
 
   await page.waitForSelector(
@@ -118,21 +120,30 @@ async function screenshot(page, filename) {
     '.col-xs-4 > #dslogon_content > .columnsContent > .formbuttons > #dsLogonButton'
   );
 
-  await navigationPromise;
-
   // For some reason, there are times when the page isn't fully loaded
   // So I added an artifical delay here.
-  await delay(10000);
+  await delay(6000);
 
   // debug statement for completing login
   if (debug) {
-    await screenshot(page, 'login-completed.png');
+    await screenshot(page, `${dateTime}-login-completed.png`);
   }
 
   // store the HTML for true verification
   let bodyHTML = await page.evaluate(() => document.body.innerHTML);
   if (debug) {
-    console.log(bodyHTML);
+    fs.writeFileSync(`debug/${dateTime}-page.html`, bodyHTML);
+  }
+
+  // properly logoff
+  await page.waitForSelector('#page_bar_top > ul > li > a > #linkLogoff');
+  await page.click('#page_bar_top > ul > li > a > #linkLogoff');
+
+  await delay(2000);
+
+  // debug statement for completing login
+  if (debug) {
+    await screenshot(page, `${dateTime}-logoff.png`);
   }
 
   await browser.close();
