@@ -1,0 +1,29 @@
+{
+  "name": "monitor-dslogon",
+  "version": "1.0.0",
+  "description": "A service for monitoring dslogon",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "start-dev": "NODE_ENV=dev node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:fartbagxp/monitor-dslogon.git"
+  },
+  "author": "Boris Ning",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^6.0.0",
+    "fetch-cookie": "^0.7.2",
+    "node-fetch": "^2.2.0",
+    "puppeteer": "^1.8.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.5.0",
+    "eslint-config-prettier": "^3.0.1",
+    "eslint-plugin-prettier": "^2.6.2",
+    "prettier": "^1.14.2",
+    "synk": "0.0.2"
+  }
+}
