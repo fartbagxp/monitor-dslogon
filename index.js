@@ -88,7 +88,7 @@ function validateHtml(html) {
     return 'No HTML found, could not validate HTML.';
   }
 
-  const MINIMUM_LENGTH = 50000;
+  const MINIMUM_LENGTH = 25000;
   const SEARCH_TERMS = [
     'logged on',
     'DS Logon',
