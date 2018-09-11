@@ -88,24 +88,17 @@ function validateHtml(html) {
     return 'No HTML found, could not validate HTML.';
   }
 
-  const MINIMUM_LENGTH = 25000;
   const SEARCH_TERMS = [
-    'logged on',
+    'currently logged on',
     'DS Logon',
     'Premium',
     'DS Logon Account Level'
   ];
 
-  // make sure we were able to fetch the HTML length of a certain size
-  // every character is a byte here, so 50k is a 50KB file.
-  if (html.length < MINIMUM_LENGTH) {
-    return 'Scraped HTML is less than desired normal HTML length.';
-  }
-
   // look for particular search terms to ensure login is successful.
   for (const term in SEARCH_TERMS) {
     if (html.indexOf(term) === -1) {
-      return `Could not find term:${term} in HTML.`;
+      return `Could not verify content due to missing key term:${term} in HTML.`;
     }
   }
 
@@ -166,10 +159,9 @@ function notify_slack(url, channel, username, errorText) {
     process.exit(1);
   });
 
+  console.log('Entering website now...');
   const page = await browser.newPage();
   await page.goto(url);
-
-  const navigationPromise = page.waitForNavigation();
 
   // debug statement for getting to the website
   if (debug) {
@@ -179,9 +171,11 @@ function notify_slack(url, channel, username, errorText) {
   await page.waitForSelector(
     '#pageHolder > #contentHolder > #advisory > form > .btn'
   );
-  await page.click('#pageHolder > #contentHolder > #advisory > form > .btn');
 
-  await navigationPromise;
+  await Promise.all([
+    page.click('#pageHolder > #contentHolder > #advisory > form > .btn'),
+    page.waitForNavigation()
+  ]);
 
   await page.waitForSelector(
     '#dslogon_content > .columnsContent > .formfield > label > #userName'
@@ -212,13 +206,15 @@ function notify_slack(url, channel, username, errorText) {
   await page.waitForSelector(
     '.col-xs-4 > #dslogon_content > .columnsContent > .formbuttons > #dsLogonButton'
   );
-  await page.click(
-    '.col-xs-4 > #dslogon_content > .columnsContent > .formbuttons > #dsLogonButton'
-  );
 
-  // For some reason, there are times when the page isn't fully loaded
-  // So I added an artifical delay here.
-  await delay(6000);
+  // This is how to properly wait for an element on submit:
+  // https://github.com/GoogleChrome/puppeteer/issues/1637
+  await Promise.all([
+    page.click(
+      '.col-xs-4 > #dslogon_content > .columnsContent > .formbuttons > #dsLogonButton'
+    ),
+    page.waitForNavigation()
+  ]);
 
   // debug statement for completing login
   if (debug) {
@@ -231,12 +227,9 @@ function notify_slack(url, channel, username, errorText) {
     fs.writeFileSync(`debug/${dateTime}-page.html`, bodyHTML);
   }
 
-  // properly logoff the site
+  // properly logoff the site so no cookies are stored or saved
   await page.waitForSelector('#page_bar_top > ul > li > a > #linkLogoff');
   await page.click('#page_bar_top > ul > li > a > #linkLogoff');
-
-  // adding an artifical delay for logging off
-  await delay(2000);
 
   // debug statement for completing login
   if (debug) {
@@ -244,6 +237,8 @@ function notify_slack(url, channel, username, errorText) {
   }
 
   await browser.close();
+
+  console.log('Completed web session. Notifying slack now.');
 
   // validate the HTML and notify the monitoring system
   const errorText = validateHtml(bodyHTML);
