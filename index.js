@@ -1,5 +1,6 @@
 const fs = require('fs');
 const puppeteer = require('puppeteer');
+const performance = require('perf_hooks').performance;
 const request = require('superagent');
 
 /**
@@ -57,15 +58,6 @@ function validateEnv() {
 }
 
 /**
- * A simple function for delaying the script for x number of milliseconds.
- */
-function delay(timeInMs) {
-  return new Promise(function(resolve) {
-    setTimeout(resolve, timeInMs);
-  });
-}
-
-/**
  * Take a simple screenshot and store it in the local screenshot folder.
  * This is great for debugging.
  */
@@ -108,19 +100,23 @@ function validateHtml(html) {
 /**
  * A quick way of monitoring via slack for now.
  */
-function notify_slack(url, channel, username, errorText) {
+async function notify_slack(url, channel, username, errorText, timeinSec) {
   const payload = {
     channel: `#${channel}`,
     username: username,
     icon_emoji: ':dslogon:'
   };
   if (errorText == null || errorText === '') {
-    payload.text = 'DSLogon login successful. HTML has been validated.';
+    payload.text = `\`SUCCESS!\` DSLogon login successful.\
+    HTML has been validated.\
+    Time taken: ${timeinSec.toFixed(2)} sec.`;
   } else {
-    payload.text = `DSLogon login monitoring failed. Error was: ${errorText}`;
+    payload.text = `\`FAILED!\` DSLogon login failed.\
+    Error was: ${errorText}. \
+    Time taken: ${timeinSec.toFixed(2)} sec.`;
   }
 
-  request
+  await request
     .post(url)
     .send(payload)
     .catch(err => {
@@ -149,18 +145,30 @@ function notify_slack(url, channel, username, errorText) {
 
   // ignore HTTPS errors due to certificate errors
   const browser = await puppeteer.launch({
-    ignoreHTTPSErrors: true
+    ignoreHTTPSErrors: true,
+    headless: true
   });
 
   // setup a listener for unhandled promise rejections
   process.on('unhandledRejection', (reason, p) => {
-    console.error('Unhandled Rejection at: Promise', p, 'reason:', reason);
+    const error = `an unhandled rejection at with reason: ${reason}`;
+    console.error(error);
+
+    const endTime = performance.now();
+    const diffTimeInMs = endTime - start;
+
+    notify_slack(slackUrl, slackChannel, slackUser, error, diffTimeInMs / 1000);
     browser.close();
-    process.exit(1);
   });
 
   console.log('Entering website now...');
+  const start = performance.now();
+
   const page = await browser.newPage();
+
+  // set the navigation timeout to a longer timeout than 30 seconds, because
+  // DSLogon can have extremely high latency (upwards of 60 sec) occasionally
+  // page.setDefaultNavigationTimeout(30000);
   await page.goto(url);
 
   // debug statement for getting to the website
@@ -238,9 +246,16 @@ function notify_slack(url, channel, username, errorText) {
 
   await browser.close();
 
-  console.log('Completed web session. Notifying slack now.');
+  // Track the timing
+  let end = performance.now();
+  let timeInMs = end - start;
+
+  console.log(
+    `Completed web session. Notifying slack now. 
+    Took ${timeInMs / 1000} seconds.`
+  );
 
   // validate the HTML and notify the monitoring system
-  const errorText = validateHtml(bodyHTML);
-  notify_slack(slackUrl, slackChannel, slackUser, errorText);
+  let errorText = validateHtml(bodyHTML);
+  notify_slack(slackUrl, slackChannel, slackUser, errorText, timeInMs / 1000);
 })();
