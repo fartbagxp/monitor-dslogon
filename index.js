@@ -3,6 +3,8 @@ const puppeteer = require('puppeteer');
 const performance = require('perf_hooks').performance;
 const request = require('superagent');
 
+const statuspageio = require('./statuspage');
+
 /**
  * Ensure that the environment and credentials are set.
  */
@@ -16,6 +18,11 @@ function validateEnv() {
   const slackUrl = process.env.slack_webhook_url;
   const slackChannel = process.env.slack_channel;
   const slackUser = process.env.slack_user;
+  const statuspageApiKey = process.env.statuspage_api_key;
+  const statuspagePageId = process.env.statuspage_page_id;
+  const statuspageUpdownMetricId = process.env.statuspage_metric_updown_id;
+  const statuspageLoginMetricId = process.env.statuspage_metric_login_id;
+  const statuspageApiBase = process.env.statuspage_api_base;
 
   let debug = false;
 
@@ -34,19 +41,74 @@ function validateEnv() {
     process.exit(1);
   }
 
+  let isSlackAvailable = true;
   if (slackUrl == null || slackUrl === '') {
-    console.error('No slack URL has been set in environment.');
-    process.exit(1);
+    console.warn('No slack URL has been set in environment.');
+    isSlackAvailable = false;
   }
 
   if (slackChannel == null || slackChannel === '') {
-    console.error('No slack channel has been set in environment.');
-    process.exit(1);
+    console.warn('No slack channel has been set in environment.');
+    isSlackAvailable = false;
   }
 
   if (slackUser == null || slackUser === '') {
-    console.error('No slack user has been set in environment.');
-    process.exit(1);
+    console.warn('No slack user has been set in environment.');
+    isSlackAvailable = false;
+  }
+
+  let isStatusPageIOAvailable = true;
+  if (statuspageApiKey == null || statuspageApiKey === '') {
+    console.warn('No StatusPage.io API Key has been set in environment.');
+    isStatusPageIOAvailable = false;
+  }
+
+  if (statuspagePageId == null || statuspagePageId === '') {
+    console.warn('No StatusPage.io Page ID has been set in environment.');
+    isStatusPageIOAvailable = false;
+  }
+
+  if (statuspageUpdownMetricId == null || statuspageUpdownMetricId === '') {
+    console.warn(
+      'No StatusPage.io Up/down Metric ID has been set in environment.'
+    );
+    isStatusPageIOAvailable = false;
+  }
+
+  if (statuspageLoginMetricId == null || statuspageLoginMetricId === '') {
+    console.warn(
+      'No StatusPage.io Login Metric ID has been set in environment.'
+    );
+    isStatusPageIOAvailable = false;
+  }
+
+  if (statuspageApiBase == null || statuspageApiBase === '') {
+    console.warn('No StatusPage.io API Base has been set in environment.');
+    isStatusPageIOAvailable = false;
+  }
+
+  let slack = {
+    url: slackUrl,
+    channel: slackChannel,
+    user: slackUser
+  };
+  if (!isSlackAvailable) {
+    slack = null;
+    console.log('Slack keys are not available. No Slack integration detected.');
+  }
+
+  let statuspage = {
+    apiKey: statuspageApiKey,
+    pageId: statuspagePageId,
+    updownMetricId: statuspageUpdownMetricId,
+    loginMetricId: statuspageLoginMetricId,
+    apiBase: statuspageApiBase
+  };
+  if (!isStatusPageIOAvailable) {
+    statuspage = null;
+    console.log(
+      'statuspage.io keys are not available. No statuspage.io integration detected.'
+    );
   }
 
   // debug flag for whether we log everything
@@ -54,7 +116,7 @@ function validateEnv() {
     debug = true;
   }
 
-  return [url, username, password, slackUrl, slackChannel, slackUser, debug];
+  return [url, username, password, slack, statuspage, debug];
 }
 
 /**
@@ -100,10 +162,14 @@ function validateHtml(html) {
 /**
  * A quick way of monitoring via slack for now.
  */
-async function notify_slack(url, channel, username, errorText, timeinSec) {
+async function notifySlack(slack, errorText, timeinSec) {
+  if (slack == null) {
+    return;
+  }
+
   const payload = {
-    channel: `#${channel}`,
-    username: username,
+    channel: `#${slack.channel}`,
+    username: slack.username,
     icon_emoji: ':dslogon:'
   };
   if (errorText == null || errorText === '') {
@@ -117,12 +183,35 @@ async function notify_slack(url, channel, username, errorText, timeinSec) {
   }
 
   await request
-    .post(url)
+    .post(slack.url)
     .send(payload)
     .catch(err => {
       console.error('Unable to send messages to the slack webhook');
     });
 }
+
+/**
+ * Retry upon failure with a max timeout.
+ *
+ * @param {Func} fn Function to retry
+ * @param {Time} ms Time in millis
+ */
+const retry = (fn, ms = 1000, maxRetries = 5) =>
+  new Promise((resolve, reject) => {
+    var retries = 0;
+    fn()
+      .then(resolve)
+      .catch(() => {
+        setTimeout(() => {
+          console.log('retrying failed promise...');
+          ++retries;
+          if (retries == maxRetries) {
+            return reject('maximum retries exceeded');
+          }
+          retry(fn, ms).then(resolve);
+        }, ms);
+      });
+  });
 
 /**
  * This is the heart of the monitoring system.
@@ -131,15 +220,7 @@ async function notify_slack(url, channel, username, errorText, timeinSec) {
  * 3. (debug) use the screenshot function to place a screenshot in the debug folder
  */
 (async () => {
-  const [
-    url,
-    username,
-    password,
-    slackUrl,
-    slackChannel,
-    slackUser,
-    debug
-  ] = validateEnv();
+  const [url, username, password, slack, statuspage, debug] = validateEnv();
 
   const dateTime = new Date().toISOString();
 
@@ -157,7 +238,10 @@ async function notify_slack(url, channel, username, errorText, timeinSec) {
     const endTime = performance.now();
     const diffTimeInMs = endTime - start;
 
-    notify_slack(slackUrl, slackChannel, slackUser, error, diffTimeInMs / 1000);
+    if (debug) {
+      notifySlack(slack, error, diffTimeInMs / 1000);
+    }
+    statuspageio(statuspage).postUpDownMetric(0);
     browser.close();
   });
 
@@ -169,7 +253,12 @@ async function notify_slack(url, channel, username, errorText, timeinSec) {
   // set the navigation timeout to a longer timeout than 30 seconds, because
   // DSLogon can have extremely high latency (upwards of 60 sec) occasionally
   // page.setDefaultNavigationTimeout(30000);
-  await page.goto(url);
+  const REQ_TIMEOUT_MS = 2000;
+  const MAX_RETRY = 5;
+  const response = await retry(() => page.goto(url), REQ_TIMEOUT_MS, MAX_RETRY);
+
+  // TODO: we should probably fail here and log it somewhere at failure
+  console.log(`response: ${response.status()}`);
 
   // debug statement for getting to the website
   if (debug) {
@@ -251,11 +340,21 @@ async function notify_slack(url, channel, username, errorText, timeinSec) {
   let timeInMs = end - start;
 
   console.log(
-    `Completed web session. Notifying slack now. 
+    `Completed web session. Notifying slack now.
     Took ${timeInMs / 1000} seconds.`
   );
 
   // validate the HTML and notify the monitoring system
   let errorText = validateHtml(bodyHTML);
-  notify_slack(slackUrl, slackChannel, slackUser, errorText, timeInMs / 1000);
+  if (debug) {
+    notifySlack(slack, errorText, timeInMs / 1000);
+  }
+
+  // send to statuspage.io
+  console.log('logging to statuspage.io');
+  let upOrDown = 0;
+  if (errorText === null) {
+    upOrDown = 1;
+  }
+  statuspageio(statuspage).postMetrics(upOrDown, timeInMs);
 })();
