@@ -1,3 +1,8 @@
+<br></br>
+[![styled with prettier](https://img.shields.io/badge/styled_with-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![MIT License](https://img.shields.io/github/license/dawnlabs/carbon.svg)](https://github.com/dawnlabs/carbon/blob/master/LICENSE)
+
 # Overview
 
 This is a high level browser automated program for monitoring [DSLogon](https://www.dmdc.osd.mil/identitymanagement/profile/home.do) for uptime.
@@ -38,4 +43,4 @@ By simulating Chrome, we have the full ability of a user's browser experience wh
 
 1. We also verify the HTML for correctness, by verifying certain key terms such as `logged in`, to verify that the user has been logged in properly.
 
-1. We also verify that all HTTP request calls were completely properly, and that no error was captured in the Chrome console. (TODO).
+1. We should verify that all HTTP request calls were completely properly, and that no error was captured in the Chrome console.
