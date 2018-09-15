@@ -160,3 +160,6 @@ debug/*
 
 # keep the folder
 !debug/.keep
+
+# test results for unit/integration testing
+test/results/test-results.xml

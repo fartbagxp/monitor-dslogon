@@ -1,19 +1,16 @@
 const expect = require('chai').expect;
 const fs = require('fs');
 const path = require('path');
-const rewire = require('rewire');
-const scraper = rewire('../index');
+const validate = require('../validate');
 
 describe('Page validation parser', function() {
   it('test null validation', () => {
-    const validateHtml = scraper.__get__('validateHtml');
-    const result = validateHtml();
+    const result = validate.validateHtml();
     expect(result).to.be.not.empty;
   });
 
   it('test empty validation', () => {
-    const validateHtml = scraper.__get__('validateHtml');
-    const result = validateHtml('');
+    const result = validate.validateHtml('');
     expect(result).to.be.not.empty;
   });
 
@@ -25,8 +22,7 @@ describe('Page validation parser', function() {
       encoding: 'utf8'
     });
 
-    const validateHtml = scraper.__get__('validateHtml');
-    const result = validateHtml(data);
+    const result = validate.validateHtml(data);
     expect(result).to.be.not.empty;
   });
 
@@ -38,8 +34,7 @@ describe('Page validation parser', function() {
       encoding: 'utf8'
     });
 
-    const validateHtml = scraper.__get__('validateHtml');
-    const result = validateHtml(data);
+    const result = validate.validateHtml(data);
     expect(result).to.be.null;
   });
 });
