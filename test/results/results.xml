@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="0.001" tests="4" failures="0">
+  <testsuite name="Root Suite" timestamp="2018-09-15T01:25:05" tests="0" failures="0" time="0">
+  </testsuite>
+  <testsuite name="Page validation parser" timestamp="2018-09-15T01:25:05" tests="4" file="/home/fractal/code/self/monitor-dslogon/test/test.js" failures="0" time="0.001">
+    <testcase name="Page validation parser test null validation" time="0.001" classname="test null validation">
+    </testcase>
+    <testcase name="Page validation parser test empty validation" time="0" classname="test empty validation">
+    </testcase>
+    <testcase name="Page validation parser test with blank file" time="0" classname="test with blank file">
+    </testcase>
+    <testcase name="Page validation parser test with HTML file" time="0" classname="test with HTML file">
+    </testcase>
+  </testsuite>
+</testsuites>
