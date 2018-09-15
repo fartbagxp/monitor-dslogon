@@ -24,7 +24,7 @@ jobs:
       - run: mkdir ~/junit
       - run:
           name: test
-          command: "node_modules/.bin/mocha -c --reporter mocha-junit-reporter --reporter-options mochaFile=~/junit/test-results.xml --recursive --exit test/"
+          command: "node_modules/.bin/mocha -c --reporter mocha-junit-reporter --reporter-options mochaFile=~/junit/test-results.xml --recursive --exit 'test/*.spec.js'"
           environment:
             MOCHA_FILE: junit/test-results.xml
           when: always
