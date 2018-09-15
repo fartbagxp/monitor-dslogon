@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "start-dev": "NODE_ENV=dev node index.js",
-    "test": "node_modules/.bin/mocha --help"
+    "test": "node_modules/.bin/mocha -c --reporter mocha-junit-reporter --reporter-options mochaFile=./test/results/results.xml --recursive --exit test/"
   },
   "repository": {
     "type": "git",
