@@ -24,7 +24,7 @@ jobs:
       - run: mkdir ~/junit
       - run:
           name: test
-          command: "node_modules/.bin/mocha --help"
+          command: "node_modules/.bin/mocha -c --reporter mocha-junit-reporter --recursive test/"
           environment:
             MOCHA_FILE: junit/test-results.xml
           when: always
