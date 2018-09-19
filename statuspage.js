@@ -8,6 +8,48 @@ const request = require('superagent');
  */
 const statuspage = creds => {
   /**
+   *
+   * @param {Object} res Response object from statuspage.io
+   */
+  function handleResponse(res) {
+    if (res.status) {
+      switch (res.status) {
+        case 201: // response accepted
+          break;
+        case 202: // batch accepted, will be queued for processing
+          break;
+        case 403:
+          console.error(
+            `Statuspage.io API returns ${
+              res.status
+            }: Metric not found for ID, or submitted too many data points: ${data}`
+          );
+          break;
+        case 405:
+          console.error(
+            `Statuspage.io API returns ${
+              res.status
+            }: Data cannot be submitted for this type of metric on provided data: ${data}`
+          );
+          break;
+        case 422:
+          console.error(
+            `Statuspage.io API returns ${
+              res.status
+            }: Validation error on provided data: ${data}`
+          );
+          break;
+        default:
+          console.error(
+            `Statuspage.io API returns ${
+              res.status
+            }: Unknown error on provided data: ${data}`
+          );
+      }
+    }
+  }
+
+  /**
    * Utilize the API to post results to the status page.
    *
    * @param {float} upOrDown The time taken for a user to login, auth, and logoff
@@ -21,6 +63,7 @@ const statuspage = creds => {
       timestamp: Math.floor(new Date() / 1000),
       value: upOrDown
     };
+
     request
       .post(
         `https://${creds.apiBase}/v1/pages/${creds.pageId}/metrics/${
@@ -30,7 +73,10 @@ const statuspage = creds => {
       .set('Authorization', `OAuth ${creds.apiKey}`)
       .send({ data })
       .then(res => {
-        console.log(JSON.stringify(res));
+        handleResponse(res);
+      })
+      .catch(err => {
+        console.error(JSON.stringify(err));
       });
   };
 
@@ -66,7 +112,10 @@ const statuspage = creds => {
       .set('Authorization', `OAuth ${creds.apiKey}`)
       .send({ data })
       .then(res => {
-        console.log(JSON.stringify(res));
+        handleResponse(res);
+      })
+      .catch(err => {
+        console.error(JSON.stringify(err));
       });
   };
 

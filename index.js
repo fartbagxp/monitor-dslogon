@@ -173,6 +173,8 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     '.col-xs-4 > #dslogon_content > .columnsContent > .formbuttons > #dsLogonButton'
   );
 
+  const startLogonTime = performance.now();
+
   // This is how to properly wait for an element on submit:
   // https://github.com/GoogleChrome/puppeteer/issues/1637
   await Promise.all([
@@ -181,6 +183,24 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     ),
     page.waitForNavigation()
   ]);
+
+  const performanceTiming = JSON.parse(
+    await page.evaluate(() => JSON.stringify(window.performance.timing))
+  );
+  const requestTimeMs =
+    performanceTiming['responseEnd'] - performanceTiming['requestStart'];
+  console.log(
+    `Completed logon. Request / Response roundtrip took ${requestTimeMs /
+      1000} seconds`
+  );
+
+  // We  may need to log better with requestStart, and responseEnd counters:
+  // https://michaljanaszek.com/blog/test-website-performance-with-puppeteer#navigationTimingAPI
+  const endLogonTime = performance.now();
+  const totalLogonTimeInMs = endLogonTime - startLogonTime;
+  console.log(
+    `Completed logon. Page load took ${totalLogonTimeInMs / 1000} seconds.`
+  );
 
   // debug statement for completing login
   if (debug) {
@@ -204,7 +224,8 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
 
   await browser.close();
 
-  // Track the timing
+  // Track the final timing of the application run
+  // This is the user end-to-end experience for time from logging in to logging off.
   let end = performance.now();
   let timeInMs = end - start;
 
