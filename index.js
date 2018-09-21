@@ -121,7 +121,7 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
 
   // set the navigation timeout to a longer timeout than 30 seconds, because
   // DSLogon can have extremely high latency (upwards of 60 sec) occasionally
-  // page.setDefaultNavigationTimeout(30000);
+  page.setDefaultNavigationTimeout(60000);
   const REQ_TIMEOUT_MS = 2000;
   const MAX_RETRY = 5;
   const response = await retry(() => page.goto(url), REQ_TIMEOUT_MS, MAX_RETRY);
@@ -246,5 +246,10 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
   if (errorText === null) {
     upOrDown = 1;
   }
-  statuspageio(statuspage).postMetrics(upOrDown, timeInMs);
+  statuspageio(statuspage).postMetrics(
+    upOrDown,
+    requestTimeMs,
+    totalLogonTimeInMs,
+    timeInMs
+  );
 })();

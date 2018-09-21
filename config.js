@@ -16,7 +16,11 @@ config.validateEnv = () => {
   const statuspageApiKey = process.env.statuspage_api_key;
   const statuspagePageId = process.env.statuspage_page_id;
   const statuspageUpdownMetricId = process.env.statuspage_metric_updown_id;
+  const statuspageResponseMetricId =
+    process.env.statuspage_metric_request_response_id;
   const statuspageLoginMetricId = process.env.statuspage_metric_login_id;
+  const statuspageLoginLogoffMetricId =
+    process.env.statuspage_metric_login_logoff_id;
   const statuspageApiBase = process.env.statuspage_api_base;
 
   let debug = false;
@@ -70,9 +74,26 @@ config.validateEnv = () => {
     isStatusPageIOAvailable = false;
   }
 
+  if (statuspageResponseMetricId == null || statuspageResponseMetricId === '') {
+    console.warn(
+      'No StatusPage.io Request/Response Metric ID has been set in environment.'
+    );
+    isStatusPageIOAvailable = false;
+  }
+
   if (statuspageLoginMetricId == null || statuspageLoginMetricId === '') {
     console.warn(
       'No StatusPage.io Login Metric ID has been set in environment.'
+    );
+    isStatusPageIOAvailable = false;
+  }
+
+  if (
+    statuspageLoginLogoffMetricId == null ||
+    statuspageLoginLogoffMetricId === ''
+  ) {
+    console.warn(
+      'No StatusPage.io Login/Logoff Metric ID has been set in environment.'
     );
     isStatusPageIOAvailable = false;
   }
@@ -96,7 +117,9 @@ config.validateEnv = () => {
     apiKey: statuspageApiKey,
     pageId: statuspagePageId,
     updownMetricId: statuspageUpdownMetricId,
+    responseMetricId: statuspageResponseMetricId,
     loginMetricId: statuspageLoginMetricId,
+    loginLogoffMetricId: statuspageLoginLogoffMetricId,
     apiBase: statuspageApiBase
   };
   if (!isStatusPageIOAvailable) {

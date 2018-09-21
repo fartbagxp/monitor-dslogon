@@ -84,23 +84,43 @@ const statuspage = creds => {
    * Utilize the API to post all metrics to the status page.
    *
    * @param {Integer} upOrDown The up or down (1 or 0) value
-   * @param {float} timeTakenInMs The time taken for a user to login, auth, and logoff
+   * @param {float} loginResponseTimeInMs The time taken for a user to login (from request/response)
+   * @param {float} loginTimeInMs The time taken for a user to login with page load
+   * @param {float} totalTimeTakenInMs The time taken for a user to login, auth, and logoff
    */
-  const postMetrics = (upOrDown, timeTakenInMs) => {
+  const postMetrics = (
+    upOrDown,
+    loginResponseTimeInMs,
+    loginTimeInMs,
+    totalTimeTakenInMs
+  ) => {
     if (creds == null) {
       return;
     }
 
     const data = {};
+    const timestamp = Math.floor(new Date() / 1000);
+    data[creds.responseMetricId] = [
+      {
+        timestamp: timestamp,
+        value: loginResponseTimeInMs
+      }
+    ];
     data[creds.loginMetricId] = [
       {
-        timestamp: Math.floor(new Date() / 1000),
-        value: timeTakenInMs
+        timestamp: timestamp,
+        value: loginTimeInMs
+      }
+    ];
+    data[creds.loginLogoffMetricId] = [
+      {
+        timestamp: timestamp,
+        value: totalTimeTakenInMs
       }
     ];
     data[creds.updownMetricId] = [
       {
-        timestamp: Math.floor(new Date() / 1000),
+        timestamp: timestamp,
         value: upOrDown
       }
     ];
