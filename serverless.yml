@@ -1,0 +1,25 @@
+service: monitor-dslogon
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  memorySize: 1536
+  timeout: 60
+
+functions:
+  cron:
+    handler: index
+    events:
+      - schedule: rate(1 minute)
+
+plugins:
+  - serverless-plugin-chrome
+
+package:
+  exclude:
+    - node_modules/puppeteer/.local-chromium/** # exclude puppeteer chrome if exists
+
+custom:
+  chrome:
+    flags:
+      - --ignore-certificate-errors

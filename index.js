@@ -3,9 +3,9 @@ const puppeteer = require('puppeteer');
 const performance = require('perf_hooks').performance;
 const request = require('superagent');
 
-const config = require('./config');
-const validation = require('./validate');
-const statuspageio = require('./statuspage');
+const config = require('./src/config');
+const validation = require('./src/validate');
+const statuspageio = require('./src/statuspage');
 
 /**
  * Take a simple screenshot and store it in the local screenshot folder.

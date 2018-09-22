@@ -8,6 +8,7 @@ const request = require('superagent');
  */
 const statuspage = creds => {
   /**
+   * Handle different error codes from statuspage.io
    *
    * @param {Object} res Response object from statuspage.io
    */
