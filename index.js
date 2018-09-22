@@ -3,9 +3,9 @@ const puppeteer = require('puppeteer');
 const performance = require('perf_hooks').performance;
 const request = require('superagent');
 
-const config = require('./config');
-const validation = require('./validate');
-const statuspageio = require('./statuspage');
+const config = require('./src/config');
+const validation = require('./src/validate');
+const statuspageio = require('./src/statuspage');
 
 /**
  * Take a simple screenshot and store it in the local screenshot folder.
@@ -121,7 +121,7 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
 
   // set the navigation timeout to a longer timeout than 30 seconds, because
   // DSLogon can have extremely high latency (upwards of 60 sec) occasionally
-  // page.setDefaultNavigationTimeout(30000);
+  page.setDefaultNavigationTimeout(60000);
   const REQ_TIMEOUT_MS = 2000;
   const MAX_RETRY = 5;
   const response = await retry(() => page.goto(url), REQ_TIMEOUT_MS, MAX_RETRY);
@@ -173,6 +173,8 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     '.col-xs-4 > #dslogon_content > .columnsContent > .formbuttons > #dsLogonButton'
   );
 
+  const startLogonTime = performance.now();
+
   // This is how to properly wait for an element on submit:
   // https://github.com/GoogleChrome/puppeteer/issues/1637
   await Promise.all([
@@ -181,6 +183,24 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     ),
     page.waitForNavigation()
   ]);
+
+  const performanceTiming = JSON.parse(
+    await page.evaluate(() => JSON.stringify(window.performance.timing))
+  );
+  const requestTimeMs =
+    performanceTiming['responseEnd'] - performanceTiming['requestStart'];
+  console.log(
+    `Completed logon. Request / Response roundtrip took ${requestTimeMs /
+      1000} seconds`
+  );
+
+  // We  may need to log better with requestStart, and responseEnd counters:
+  // https://michaljanaszek.com/blog/test-website-performance-with-puppeteer#navigationTimingAPI
+  const endLogonTime = performance.now();
+  const totalLogonTimeInMs = endLogonTime - startLogonTime;
+  console.log(
+    `Completed logon. Page load took ${totalLogonTimeInMs / 1000} seconds.`
+  );
 
   // debug statement for completing login
   if (debug) {
@@ -204,7 +224,8 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
 
   await browser.close();
 
-  // Track the timing
+  // Track the final timing of the application run
+  // This is the user end-to-end experience for time from logging in to logging off.
   let end = performance.now();
   let timeInMs = end - start;
 
@@ -225,5 +246,10 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
   if (errorText === null) {
     upOrDown = 1;
   }
-  statuspageio(statuspage).postMetrics(upOrDown, timeInMs);
+  statuspageio(statuspage).postMetrics(
+    upOrDown,
+    requestTimeMs,
+    totalLogonTimeInMs,
+    timeInMs
+  );
 })();

@@ -33,7 +33,20 @@ I use [vs-code](https://code.visualstudio.com/) with a [prettier extension](http
 ## How it works
 
 [Puppeteer](https://github.com/GoogleChrome/puppeteer) is a NodeJS library which provides a high level API to automate Google Chrome.
-By simulating Chrome, we have the full ability of a user's browser experience when logging in.
+By simulating Chrome, we have the full ability of viewing a particular user's experience when logging in.
+
+## How to run
+
+```sh
+# Simple Test run with screenshots saved to debug folder.
+npm run start-dev
+
+# Simulate a production run
+npm start
+
+# Running tests
+npm test
+```
 
 ## Verification on whether DSLogon is up or down
 

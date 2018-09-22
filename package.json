@@ -7,7 +7,8 @@
     "start": "node index.js",
     "start-dev": "NODE_ENV=dev node index.js",
     "test": "node_modules/.bin/mocha --recursive --exit 'test/*.spec.js'",
-    "test-output": "node_modules/.bin/mocha -c --reporter mocha-junit-reporter --reporter-options mochaFile=./test/results/test-results.xml --recursive --exit 'test/*.spec.js'"
+    "test-output": "node_modules/.bin/mocha -c --reporter mocha-junit-reporter --reporter-options mochaFile=./test/results/test-results.xml --recursive --exit 'test/*.spec.js'",
+    "deploy": "serverless deploy -v"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,7 @@
     "mocha": "^5.2.0",
     "mocha-junit-reporter": "^1.18.0",
     "prettier": "^1.14.2",
-    "rewire": "^4.0.1"
+    "serverless": "^1.32.0",
+    "serverless-plugin-chrome": "^1.0.0-55"
   }
 }

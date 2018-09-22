@@ -1,7 +1,7 @@
 const expect = require('chai').expect;
 const fs = require('fs');
 const path = require('path');
-const validate = require('../validate');
+const validate = require('../src/validate');
 
 describe('Page validation parser', function() {
   it('test null validation', () => {
