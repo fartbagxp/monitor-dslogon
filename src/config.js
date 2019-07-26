@@ -10,6 +10,7 @@ config.validateEnv = () => {
   const url = process.env.url;
   const username = process.env.username;
   const password = process.env.password;
+  const mfaKey = process.env.mfa_key;
   const slackUrl = process.env.slack_webhook_url;
   const slackChannel = process.env.slack_channel;
   const slackUser = process.env.slack_user;
@@ -37,6 +38,11 @@ config.validateEnv = () => {
 
   if (password == null || password === '') {
     console.error('No password has been set in environment.');
+    process.exit(1);
+  }
+
+  if (mfaKey == null || mfaKey === '') {
+    console.error('No MFA key has been set in environment.');
     process.exit(1);
   }
 
@@ -134,7 +140,7 @@ config.validateEnv = () => {
     debug = true;
   }
 
-  return [url, username, password, slack, statuspage, debug];
+  return [url, username, password, mfaKey, slack, statuspage, debug];
 };
 
 module.exports = config;
