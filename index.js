@@ -100,7 +100,8 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
   const browser = await puppeteer.launch({
     ignoreHTTPSErrors: true,
     headless: true,
-    slowMo: 100
+    slowMo: 100,
+    args: ['--start-fullscreen']
   });
 
   // setup a listener for unhandled promise rejections
@@ -123,6 +124,20 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
 
   const pages = await browser.pages();
   let page = pages[0];
+
+  page.on('response', resp => {
+    if (!resp.ok() && resp.status() !== 302) {
+      console.log(resp.url() + ' is not okay: ' + resp.status());
+    }
+  });
+
+  page.on('requestfailed', req => {
+    console.log(req.url() + ' ' + req.failure().errorText);
+  });
+
+  page.on('requestfinished', req => {
+    // console.log('request completed: ' + req.url());
+  });
 
   // set the navigation timeout to a longer timeout than 30 seconds, because
   // DSLogon can have extremely high latency (upwards of 60 sec) occasionally
@@ -172,7 +187,7 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
   );
 
   console.log('got here 5');
-  await page.waitForNavigation({ waitUntil: 'networkidle2' });
+  await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
   // const sleep = seconds =>
   //   new Promise(resolve => setTimeout(resolve, (seconds || 1) * 1000));

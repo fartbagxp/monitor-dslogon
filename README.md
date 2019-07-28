@@ -57,3 +57,11 @@ npm test
 1. We also verify the HTML for correctness, by verifying certain key terms such as `logged in`, to verify that the user has been logged in properly.
 
 1. We should verify that all HTTP request calls were completely properly, and that no error was captured in the Chrome console.
+
+## TODO
+
+1. Password failure, need to check all HTTPS error codes for various submission requests.
+2. Connection Reset on DSLogon page. Will end at 6.
+3. Outage means redirection from ID.me will hang forever at 6. From going directly through DSLogon, it'll give you a 500 http status code.
+4. 60 login time through DSLogon is around the right time.
+5. Error 60 gives back 200 HTTP status code.
