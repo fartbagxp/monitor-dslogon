@@ -155,21 +155,17 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
   if (debug) {
     await screenshot(page, `${dateTime}-initial-website.png`);
   }
-
-  console.log('got here 1');
-
+  console.log('Awaiting va.gov page pop-up rendering');
   await page.waitForSelector(
     '.va-modal-inner > .va-modal-body > div > div > button'
   );
   await page.click('.va-modal-inner > .va-modal-body > div > div > button');
 
-  console.log('got here 2');
-
+  console.log('Awaiting va.gov navigation menu rendering');
   await page.waitForSelector('#mega-menu #vetnav-menu');
   await page.click('#mega-menu #vetnav-menu');
 
-  console.log('got here 3');
-
+  console.log('Awaiting va.gov sign-in button rendering');
   await page.waitForSelector(
     '.profile-nav-container > .profile-nav > .sign-in-nav > .sign-in-links > .sign-in-link'
   );
@@ -177,8 +173,7 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     '.profile-nav-container > .profile-nav > .sign-in-nav > .sign-in-links > .sign-in-link'
   );
 
-  console.log('got here 4');
-
+  console.log('Awaiting va.gov DSLogon sign-in button rendering through ID.me');
   await page.waitForSelector(
     '.usa-width-one-half > .signin-actions-container > .signin-actions > div > .dslogon'
   );
@@ -186,16 +181,11 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     '.usa-width-one-half > .signin-actions-container > .signin-actions > div > .dslogon'
   );
 
-  console.log('got here 5');
+  // This doesn't quite work, so it is important we wait until the site successfully renders.
+  console.log('Awaiting ID.me to redirect user to DSLogon primary site');
   await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
-  // const sleep = seconds =>
-  //   new Promise(resolve => setTimeout(resolve, (seconds || 1) * 1000));
-
-  // console.log('Now waiting 5 seconds for DSLogon to load');
-  // await new Promise(done => setTimeout(() => done(), 5000));
-  console.log('got here 6');
-
+  console.log('Awaiting DSLogon page to render the username/password fields');
   await page.waitForSelector(
     '#dslogon_content > .columnsContent > .formfield > label > #userName',
     { timeout: 60000 }
@@ -224,13 +214,14 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     password
   );
 
-  console.log('got here 7');
-
   // debug statement for writing credentials
   if (debug) {
     await screenshot(page, `${dateTime}-entering-credentials.png`);
   }
 
+  console.log(
+    'Completed DSLogon user authentication. Awaiting redirection to ID.me multifactor code.'
+  );
   await page.waitForSelector(
     '.tab-content > #dslogon_content > #dslogon_content > .columnsContent > .formbuttons'
   );
@@ -238,19 +229,20 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     '.tab-content > #dslogon_content > #dslogon_content > .columnsContent > .formbuttons'
   );
 
-  console.log('got here 8');
-
+  console.log('Awaiting multifactor code text field to render.');
   await page.waitForSelector(
     '.form-container > #new_multifactor #multifactor_code',
     { timeout: 10000 }
   );
   await page.click('.form-container > #new_multifactor #multifactor_code');
-
   await page.type(
     '.form-container > #new_multifactor #multifactor_code',
     authenticator.generateToken(mfaKey)
   );
 
+  console.log(
+    'Multifactor code entered. Awaiting the ID.me multifactor submission button to render'
+  );
   await page.waitForSelector(
     '.form-container > #new_multifactor > .form-actions > .form-action-button > .btn'
   );
@@ -268,8 +260,23 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
   // ]);
   // await page.click('#dslogon_content > #dslogon_content #dsLogonButton');
   // await page.waitForNavigation();
-  console.log('got here 9');
+  console.log('Redirecting to va.gov after successful submission of va.gov');
   await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+  console.log('Awaiting sign out button to render');
+  await page.waitForSelector(
+    '.profile-nav > .sign-in-nav > div > .va-dropdown > .va-btn-withicon'
+  );
+  await page.click(
+    '.profile-nav > .sign-in-nav > div > .va-dropdown > .va-btn-withicon'
+  );
+
+  await page.waitForSelector(
+    '.va-dropdown > #account-menu > ul > li:nth-child(5) > a'
+  );
+  await page.click('.va-dropdown > #account-menu > ul > li:nth-child(5) > a');
+  await page.waitForNavigation();
+
   await browser.close();
 
   // Track the final timing of the application run
@@ -281,8 +288,6 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     `Completed web session. Notifying slack now.
   Took ${timeInMs / 1000} seconds.`
   );
-
-  console.log('got here 10');
 
   // setTimeout(() => {
   //   console.log('stopping time for 10 sec');
