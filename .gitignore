@@ -163,3 +163,6 @@ debug/*
 
 # test results for unit/integration testing
 test/results/test-results.xml
+
+# ignore test output
+*.txt

@@ -21,30 +21,22 @@ const statuspage = creds => {
           break;
         case 403:
           console.error(
-            `Statuspage.io API returns ${
-              res.status
-            }: Metric not found for ID, or submitted too many data points: ${data}`
+            `Statuspage.io API returns ${res.status}: Metric not found for ID, or submitted too many data points: ${data}`
           );
           break;
         case 405:
           console.error(
-            `Statuspage.io API returns ${
-              res.status
-            }: Data cannot be submitted for this type of metric on provided data: ${data}`
+            `Statuspage.io API returns ${res.status}: Data cannot be submitted for this type of metric on provided data: ${data}`
           );
           break;
         case 422:
           console.error(
-            `Statuspage.io API returns ${
-              res.status
-            }: Validation error on provided data: ${data}`
+            `Statuspage.io API returns ${res.status}: Validation error on provided data: ${data}`
           );
           break;
         default:
           console.error(
-            `Statuspage.io API returns ${
-              res.status
-            }: Unknown error on provided data: ${data}`
+            `Statuspage.io API returns ${res.status}: Unknown error on provided data: ${data}`
           );
       }
     }
@@ -67,9 +59,7 @@ const statuspage = creds => {
 
     request
       .post(
-        `https://${creds.apiBase}/v1/pages/${creds.pageId}/metrics/${
-          creds.updownMetricId
-        }/data.json`
+        `https://${creds.apiBase}/v1/pages/${creds.pageId}/metrics/${creds.updownMetricId}/data.json`
       )
       .set('Authorization', `OAuth ${creds.apiKey}`)
       .send({ data })
