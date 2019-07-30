@@ -1,9 +1,8 @@
-const fs = require('fs');
 const puppeteer = require('puppeteer');
 const performance = require('perf_hooks').performance;
-const request = require('superagent');
 
 const config = require('./src/config');
+const listener = require('./src/page-listener');
 const validation = require('./src/validate');
 const statuspageio = require('./src/statuspage');
 
@@ -21,37 +20,6 @@ async function screenshot(page, filename) {
     return;
   }
   await page.screenshot({ path: `debug/${filename}` });
-}
-
-/**
- * A quick way of monitoring via slack for now.
- */
-async function notifySlack(slack, errorText, timeinSec) {
-  if (slack == null) {
-    return;
-  }
-
-  const payload = {
-    channel: `#${slack.channel}`,
-    username: slack.username,
-    icon_emoji: ':dslogon:'
-  };
-  if (errorText == null || errorText === '') {
-    payload.text = `\`SUCCESS!\` DSLogon login successful.\
-    HTML has been validated.\
-    Time taken: ${timeinSec.toFixed(2)} sec.`;
-  } else {
-    payload.text = `\`FAILED!\` DSLogon login failed.\
-    Error was: ${errorText}. \
-    Time taken: ${timeinSec.toFixed(2)} sec.`;
-  }
-
-  await request
-    .post(slack.url)
-    .send(payload)
-    .catch(err => {
-      console.error('Unable to send messages to the slack webhook');
-    });
 }
 
 /**
@@ -79,9 +47,7 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
 
 /**
  * This is the heart of the monitoring system.
- * 1. Navigate to the main page and begin logging in.
- * 2. Use the credentials provided in .env
- * 3. (debug) use the screenshot function to place a screenshot in the debug folder
+ * The path is va.gov -> id.me -> DSLogon (username, password) -> id.me (MFA) -> va.gov
  */
 (async () => {
   const [
@@ -100,9 +66,11 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
   const browser = await puppeteer.launch({
     ignoreHTTPSErrors: true,
     headless: true,
-    slowMo: 100,
+    slowMo: 100, // DSLogon website has been known to refresh the page if loaded too quickly, one way to counter it is to simulate human behavior of ~100ms.
     args: ['--start-fullscreen']
   });
+
+  const start = performance.now();
 
   // setup a listener for unhandled promise rejections
   process.on('unhandledRejection', (reason, p) => {
@@ -112,36 +80,17 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     // const endTime = performance.now();
     // const diffTimeInMs = endTime - start;
 
-    // if (debug) {
-    //   notifySlack(slack, error, diffTimeInMs / 1000);
-    // }
     // statuspageio(statuspage).postUpDownMetric(0);
     browser.close();
   });
 
-  console.log('Entering website now...');
-  const start = performance.now();
-
   const pages = await browser.pages();
   let page = pages[0];
+  listener.listen(page);
 
-  page.on('response', resp => {
-    if (!resp.ok() && resp.status() !== 302) {
-      console.log(resp.url() + ' is not okay: ' + resp.status());
-    }
-  });
+  console.log('Entering website now...');
 
-  page.on('requestfailed', req => {
-    console.log(req.url() + ' ' + req.failure().errorText);
-  });
-
-  page.on('requestfinished', req => {
-    // console.log('request completed: ' + req.url());
-  });
-
-  // set the navigation timeout to a longer timeout than 30 seconds, because
-  // DSLogon can have extremely high latency (upwards of 60 sec) occasionally
-  // Changing to optimal viewport because the default viewport means that DSLogon might take forever to load (why? no idea)
+  // set the initial login to high timeout, along with retry.
   page.setDefaultNavigationTimeout(60000);
   page.setViewport({ width: 1920, height: 900 });
   const REQ_TIMEOUT_MS = 2000;
@@ -214,13 +163,9 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     password
   );
 
-  // debug statement for writing credentials
-  if (debug) {
-    await screenshot(page, `${dateTime}-entering-credentials.png`);
-  }
-
+  const dslogonStartTime = performance.now();
   console.log(
-    'Completed DSLogon user authentication. Awaiting redirection to ID.me multifactor code.'
+    'Completing DSLogon user authentication. Redirecting now to ID.me multifactor code.'
   );
   await page.waitForSelector(
     '.tab-content > #dslogon_content > #dslogon_content > .columnsContent > .formbuttons'
@@ -228,6 +173,9 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
   await page.click(
     '.tab-content > #dslogon_content > #dslogon_content > .columnsContent > .formbuttons'
   );
+  const dslogonEndTimeMs = performance.now();
+  const dslogonTotalTimeSec = (dslogonEndTimeMs - dslogonStartTime) / 1000;
+  console.log(`Total DSLogon time ${dslogonTotalTimeSec}`);
 
   console.log('Awaiting multifactor code text field to render.');
   await page.waitForSelector(
@@ -250,16 +198,6 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     '.form-container > #new_multifactor > .form-actions > .form-action-button > .btn'
   );
 
-  // const startLogonTime = performance.now();
-
-  // // This is how to properly wait for an element on submit:
-  // // https://github.com/GoogleChrome/puppeteer/issues/1637
-  // await Promise.all([
-  //   page.click('#dslogon_content > #dslogon_content #dsLogonButton'),
-  //   page.waitForNavigation()
-  // ]);
-  // await page.click('#dslogon_content > #dslogon_content #dsLogonButton');
-  // await page.waitForNavigation();
   console.log('Redirecting to va.gov after successful submission of va.gov');
   await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
@@ -275,7 +213,7 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     '.va-dropdown > #account-menu > ul > li:nth-child(5) > a'
   );
   await page.click('.va-dropdown > #account-menu > ul > li:nth-child(5) > a');
-  await page.waitForNavigation();
+  await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
   await browser.close();
 
@@ -288,48 +226,6 @@ const retry = (fn, ms = 1000, maxRetries = 5) =>
     `Completed web session. Notifying slack now.
   Took ${timeInMs / 1000} seconds.`
   );
-
-  // setTimeout(() => {
-  //   console.log('stopping time for 10 sec');
-  // }, 10000);
-
-  // const performanceTiming = JSON.parse(
-  //   await page.evaluate(() => JSON.stringify(window.performance.timing))
-  // );
-  // const requestTimeMs =
-  //   performanceTiming['responseEnd'] - performanceTiming['requestStart'];
-  // console.log(
-  //   `Completed logon. Request / Response roundtrip took ${requestTimeMs /
-  //     1000} seconds`
-  // );
-
-  // // We  may need to log better with requestStart, and responseEnd counters:
-  // // https://michaljanaszek.com/blog/test-website-performance-with-puppeteer#navigationTimingAPI
-  // const endLogonTime = performance.now();
-  // const totalLogonTimeInMs = endLogonTime - startLogonTime;
-  // console.log(
-  //   `Completed logon. Page load took ${totalLogonTimeInMs / 1000} seconds.`
-  // );
-
-  // // debug statement for completing login
-  // if (debug) {
-  //   await screenshot(page, `${dateTime}-login-completed.png`);
-  // }
-
-  // // store the HTML for true verification
-  // let bodyHTML = await page.evaluate(() => document.body.innerHTML);
-  // if (debug) {
-  //   fs.writeFileSync(`debug/${dateTime}-page.html`, bodyHTML);
-  // }
-
-  // // properly logoff the site so no cookies are stored or saved
-  // await page.waitForSelector('#page_bar_top > ul > li > a > #linkLogoff');
-  // await page.click('#page_bar_top > ul > li > a > #linkLogoff');
-
-  // // debug statement for completing login
-  // if (debug) {
-  //   await screenshot(page, `${dateTime}-logoff.png`);
-  // }
 
   // // validate the HTML and notify the monitoring system
   // let errorText = validation.validateHtml(bodyHTML);
